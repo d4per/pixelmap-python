@@ -104,6 +104,10 @@ jobs:
   publish:
     name: publish to PyPI
     needs: verify
+    # Only a tag publishes. This is what makes `workflow_dispatch` a dry run: it builds
+    # every wheel and the sdist, verifies one installs, and stops. Without it, anyone
+    # clicking "Run workflow" would upload to PyPI, where a version cannot be replaced.
+    if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     environment:
       name: pypi
