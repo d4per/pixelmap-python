@@ -44,9 +44,12 @@ jobs:
           - runner: ubuntu-22.04
             target: x86_64
             manylinux: musllinux_1_2
-          - runner: macos-14
+          # The labels `maturin generate-ci` emits. macos-13 was retired and a job asking
+          # for a label that no longer exists queues forever rather than failing, so this
+          # is worth re-checking against the runner-images README when a release stalls.
+          - runner: macos-latest
             target: aarch64
-          - runner: macos-13
+          - runner: macos-15-intel
             target: x86_64
           - runner: windows-latest
             target: x64
