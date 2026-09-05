@@ -1,0 +1,102 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  wheels:
+    name: wheels (${{ matrix.platform.runner }} ${{ matrix.platform.target }}${{ matrix.platform.manylinux == 'musllinux_1_2' && ' musl' || '' }})
+    runs-on: ${{ matrix.platform.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - runner: ubuntu-22.04
+            target: x86_64
+            manylinux: auto
+          - runner: ubuntu-22.04
+            target: aarch64
+            manylinux: auto
+          - runner: ubuntu-22.04
+            target: x86_64
+            manylinux: musllinux_1_2
+          - runner: macos-14
+            target: aarch64
+          - runner: macos-13
+            target: x86_64
+          - runner: windows-latest
+            target: x64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build wheel
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.platform.target }}
+          # One abi3 wheel per platform covers CPython 3.9 and up.
+          args: --release --out dist
+          manylinux: ${{ matrix.platform.manylinux }}
+          sccache: "true"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.platform.runner }}-${{ matrix.platform.target }}-${{ matrix.platform.manylinux || 'native' }}
+          path: dist
+
+  sdist:
+    name: sdist
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: PyO3/maturin-action@v1
+        with:
+          command: sdist
+          args: --out dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-sdist
+          path: dist
+
+  # Smoke-test the artefacts before they go anywhere permanent: PyPI does not allow a
+  # version to be replaced, so a broken wheel there is a bumped version, not a fix.
+  verify:
+    name: install and import each wheel
+    needs: [wheels, sdist]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: wheels-*
+          merge-multiple: true
+          path: dist
+      - run: ls -la dist
+      - run: pip install numpy && pip install dist/*manylinux*x86_64.whl
+      - run: python -c "import numpy as np, pixelmap; a=np.zeros((64,64,3),'uint8'); print(pixelmap.correspond(a,a).coverage)"
+
+  publish:
+    name: publish to PyPI
+    needs: verify
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/pixelmap
+    permissions:
+      # Trusted Publishing: PyPI verifies this workflow's OIDC identity, so there is no
+      # API token to store or rotate. Register the publisher on PyPI before the first tag.
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: wheels-*
+          merge-multiple: true
+          path: dist
+      - uses: pypa/gh-action-pypi-publish@release/v1
