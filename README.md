@@ -1,7 +1,7 @@
-# pixelmap
+# pixelmap-python
 
-[![PyPI](https://img.shields.io/pypi/v/pixelmap.svg)](https://pypi.org/project/pixelmap/)
-[![Python versions](https://img.shields.io/pypi/pyversions/pixelmap.svg)](https://pypi.org/project/pixelmap/)
+[![PyPI](https://img.shields.io/pypi/v/pixelmap-python.svg)](https://pypi.org/project/pixelmap-python/)
+[![Python versions](https://img.shields.io/pypi/pyversions/pixelmap-python.svg)](https://pypi.org/project/pixelmap-python/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 **Dense image correspondence: given two photographs of the same scene, work out where
@@ -23,8 +23,12 @@ as the front half of a 3D reconstruction.
 ## Install
 
 ```console
-pip install pixelmap
+pip install pixelmap-python
 ```
+
+The package installs as `pixelmap-python` but imports as `pixelmap` — PyPI will not accept
+`pixelmap` as a distribution name, because it collides with the unrelated `pixel-map`
+project under PyPI's similarity rule.
 
 Wheels are published for Linux (x86-64, aarch64, musl), macOS (Apple silicon and Intel)
 and Windows (x86-64), for CPython 3.9 and newer. NumPy is the only runtime dependency; no

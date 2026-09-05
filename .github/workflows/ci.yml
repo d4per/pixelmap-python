@@ -69,5 +69,5 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - run: pip install maturin
       - run: maturin sdist --out dist
-      - run: pip install --no-binary pixelmap dist/*.tar.gz
+      - run: pip install --no-binary pixelmap-python dist/*.tar.gz
       - run: python -c "import pixelmap; print(pixelmap.__version__, pixelmap.MIN_DIMENSION)"

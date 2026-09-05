@@ -50,7 +50,9 @@ __all__ = [
 try:  # pragma: no cover - trivial, and absent only in a broken install
     from importlib.metadata import version as _version
 
-    __version__ = _version("pixelmap")
+    # The distribution is `pixelmap-python`; only the import name is `pixelmap`. PyPI
+    # refuses `pixelmap` as too similar to the unrelated `pixel-map` project.
+    __version__ = _version("pixelmap-python")
 except Exception:  # pragma: no cover
     __version__ = "unknown"
 

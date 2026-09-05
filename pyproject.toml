@@ -3,7 +3,7 @@ requires = ["maturin>=1.7,<2.0"]
 build-backend = "maturin"
 
 [project]
-name = "pixelmap"
+name = "pixelmap-python"
 requires-python = ">=3.9"
 description = "Dense image correspondence: work out where every pixel of one photo went in another"
 readme = "README.md"

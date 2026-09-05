@@ -114,7 +114,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/pixelmap
+      url: https://pypi.org/p/pixelmap-python
     permissions:
       # Trusted Publishing: PyPI verifies this workflow's OIDC identity, so there is no
       # API token to store or rotate. Register the publisher on PyPI before the first tag.
