@@ -29,9 +29,13 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - run: pip install maturin pytest numpy pillow
-      # --release because the tests run the real solver: a debug build takes minutes.
-      - run: maturin develop --release
+      - run: pip install pytest numpy pillow
+      # `pip install .` rather than `maturin develop`: a runner has no virtualenv for
+      # develop to install into, and this is the path a user actually takes. pip fetches
+      # maturin itself from the build-system requires, and the backend compiles in release
+      # mode — which matters, because the tests run the real solver and a debug build
+      # takes minutes rather than twenty seconds.
+      - run: pip install .
       - run: pytest -v
 
   lint:
