@@ -46,7 +46,7 @@ flow = mapping.flow()  # (H, W, 2) float32: how far each pixel moved
 print(f"{mapping.coverage:.1%} of the image was mapped")
 
 # Where did the pixel at (120, 84) end up?
-print(mapping.lookup(120.0, 84.0))  # (114.2, 81.0), or None if unmapped
+print(mapping.lookup(120.0, 84.0))  # (114.2, 80.6), or None if unmapped
 ```
 
 `flow[y, x]` is `(dx, dy)` in the source photos' own pixel coordinates. Regions the

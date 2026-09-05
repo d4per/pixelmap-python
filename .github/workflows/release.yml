@@ -9,7 +9,26 @@ permissions:
   contents: read
 
 jobs:
+  # PyPI does not allow a version to be replaced, so a tag that disagrees with the
+  # manifest would publish under the wrong number with no way to take it back.
+  check-version:
+    name: tag matches Cargo.toml
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compare
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          manifest=$(grep -m1 '^version = ' Cargo.toml | cut -d'"' -f2)
+          tag="${GITHUB_REF_NAME#v}"
+          if [ "$manifest" != "$tag" ]; then
+            echo "tag $GITHUB_REF_NAME does not match Cargo.toml version $manifest" >&2
+            exit 1
+          fi
+          echo "publishing version $manifest"
+
   wheels:
+    needs: check-version
     name: wheels (${{ matrix.platform.runner }} ${{ matrix.platform.target }}${{ matrix.platform.manylinux == 'musllinux_1_2' && ' musl' || '' }})
     runs-on: ${{ matrix.platform.runner }}
     strategy:
