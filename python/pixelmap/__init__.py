@@ -191,10 +191,15 @@ class Correspondence:
         ``t=0.0`` is the first photo unchanged and ``t=1.0`` is it fully warped onto the
         second.
 
-        The warp scatters source pixels to their destinations, so pixels nothing lands on
-        are left fully transparent — alpha is ``255`` or ``0`` and never in between, which
-        makes ``warped[..., 3] == 0`` the mask of what the warp did not fill. Raising
-        ``detail`` fills most of those in.
+        The warp scatters source pixels to their destinations, and pixels nothing lands
+        on are left black. Every pixel is opaque, so alpha carries no information; it is
+        there because the underlying image type is RGBA.
+
+        Black means one of two things — a region with no correspondence, or a place the
+        warp stretched by more than ``detail`` covers — and the image alone cannot tell
+        them apart, nor tell either from a source pixel that was genuinely black. Raise
+        ``detail`` to close the stretched gaps; use :meth:`flow` or :meth:`lookup` to ask
+        which regions have no correspondence.
 
         The result is at the solver's *working* resolution, not the source resolution —
         see :attr:`working_dimensions` — because the warp is applied to the scaled photo

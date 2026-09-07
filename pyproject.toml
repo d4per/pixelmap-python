@@ -8,7 +8,7 @@ requires-python = ">=3.9"
 description = "Dense image correspondence: work out where every pixel of one photo went in another"
 readme = "README.md"
 license = { file = "LICENSE" }
-authors = [{ name = "Per Ai", email = "perai@dogduck.com" }]
+authors = [{ name = "Per Brendelökken", email = "per@brendelokken.se" }]
 keywords = ["computer-vision", "correspondence", "optical-flow", "registration", "stereo", "image-registration"]
 classifiers = [
     "Development Status :: 4 - Beta",

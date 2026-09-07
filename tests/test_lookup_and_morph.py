@@ -72,12 +72,37 @@ def test_morph_returns_rgba_at_working_resolution(mapping):
     assert warped.dtype == np.uint8
 
 
-def test_morph_marks_gaps_transparent(mapping):
+def test_morph_output_is_fully_opaque(mapping):
+    # The buffer is pre-filled opaque, so alpha says nothing about whether a pixel was
+    # written. Pinned because the binding used to document alpha as the unfilled mask.
+    assert np.all(mapping.morph(0.5)[..., 3] == 255)
+
+
+def test_morph_leaves_unfilled_pixels_black(mapping):
     warped = mapping.morph(0.5)
-    # Every pixel is either fully opaque (something landed there) or fully transparent
-    # (nothing did) - there is no partial alpha to misinterpret.
-    assert set(np.unique(warped[..., 3])) <= {0, 255}
-    assert np.mean(warped[..., 3] == 255) > 0.8
+    unfilled = (warped[..., :3] == 0).all(axis=2)
+    # Some of the image is unmapped, but most of it is not.
+    assert 0.0 < unfilled.mean() < 0.2
+
+
+def test_morph_leaves_unfilled_pixels_where_the_mapping_is_missing(mapping):
+    # At t=0 every mapped sample writes to its own position, so a black pixel means
+    # exactly "nothing was mapped here" - which makes this the one interpolation value
+    # where the unfilled mask can be checked against the flow field directly.
+    unfilled = (mapping.morph(0.0)[..., :3] == 0).all(axis=2)
+
+    height, width = unfilled.shape
+    scale = mapping.working_scale
+    ys, xs = np.mgrid[0:height, 0:width]
+    out_x, _ = mapping.lookup(
+        (xs / scale).ravel().astype(np.float32), (ys / scale).ravel().astype(np.float32)
+    )
+    unmapped = np.isnan(out_x).reshape(height, width)
+
+    # Not identical: the scatter rounds to whole pixels, so a mapped sample can miss the
+    # pixel it started on. Agreeing on the great majority is what rules out the old bug,
+    # where every unmapped sample landed on (0, 0) instead of staying put.
+    assert (unfilled == unmapped).mean() > 0.95
 
 
 def test_morph_at_zero_leaves_the_photo_alone(mapping):
@@ -92,7 +117,8 @@ def test_morph_detail_must_be_at_least_one(mapping):
 
 
 def test_morph_with_more_detail_fills_more_pixels(mapping):
-    coarse = mapping.morph(1.0, detail=1)
-    fine = mapping.morph(1.0, detail=2)
-    # Supersampling fills gaps the warp stretches open.
-    assert (fine[..., 3] == 0).sum() < (coarse[..., 3] == 0).sum()
+    def unfilled(warped):
+        return (warped[..., :3] == 0).all(axis=2).sum()
+
+    # Supersampling fills gaps the warp stretches open, which are left black.
+    assert unfilled(mapping.morph(1.0, detail=2)) < unfilled(mapping.morph(1.0, detail=1))
