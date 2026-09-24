@@ -127,16 +127,16 @@ checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 
 [[package]]
 name = "pixelmap"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f887110bb0fb55c1671878cbfc778ae5713dd6650aa5bf9f7f7a0a141359638a"
+checksum = "12b746150d37920068fb0d4e2cc64777e8b92266f76212c46d47db7c81370dc3"
 dependencies = [
  "rayon",
 ]
 
 [[package]]
 name = "pixelmap-py"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "numpy",
  "pixelmap",

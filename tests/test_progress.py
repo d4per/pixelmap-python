@@ -40,8 +40,30 @@ def test_an_exception_from_the_callback_reaches_the_caller(small_pair):
     with pytest.raises(RuntimeError, match="stop right there"):
         pixelmap.correspond(*small_pair, progress=explode)
 
-    # The run cannot be aborted mid-flight, but the callback is not called again.
+    # The run stops at the step that raised, so the callback is not called again.
     assert calls == [1]
+
+
+def test_raising_partway_stops_the_run_at_that_step(small_pair):
+    calls = []
+
+    def stop_at_two(step, total):
+        calls.append(step)
+        if step == 2:
+            raise RuntimeError("that will do")
+
+    with pytest.raises(RuntimeError, match="that will do"):
+        pixelmap.correspond(*small_pair, progress=stop_at_two)
+
+    assert calls == [1, 2]
+
+
+def test_keyboard_interrupt_from_the_callback_reaches_the_caller(small_pair):
+    def interrupt(step, total):
+        raise KeyboardInterrupt
+
+    with pytest.raises(KeyboardInterrupt):
+        pixelmap.correspond(*small_pair, progress=interrupt)
 
 
 def test_no_callback_is_the_default(small_pair):

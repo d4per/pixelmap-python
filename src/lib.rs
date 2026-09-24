@@ -6,6 +6,7 @@
 mod convert;
 mod errors;
 
+use std::ops::ControlFlow;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -304,26 +305,27 @@ fn correspond(
         builder = builder.seed(seed);
     }
 
-    // The first exception raised by the progress callback, or by a Ctrl-C arriving while
-    // the solver runs. `run_with_progress` takes an `FnMut` that cannot fail, so the run
-    // goes to completion and the error is raised afterwards; we just stop calling back.
+    // The exception raised by the progress callback, or by a Ctrl-C arriving while the
+    // solver runs. Either one breaks out of the run, which the crate honours between
+    // schedule steps, and is raised once it has stopped. Signals are checked at every
+    // step, not only when there is a callback, so Ctrl-C works without one.
     let mut interrupted: Option<PyErr> = None;
 
     let result = py.detach(|| {
-        builder.run_with_progress(photo1, photo2, |step| {
-            if interrupted.is_some() {
-                return;
-            }
-            if let Some(callback) = progress.as_ref() {
-                Python::attach(|py| {
-                    if let Err(err) = py
-                        .check_signals()
-                        .and_then(|()| callback.call1(py, (step.step, step.total)).map(|_| ()))
-                    {
-                        interrupted = Some(err);
-                    }
+        builder.run_with_control(photo1, photo2, |step| {
+            Python::attach(|py| {
+                let outcome = py.check_signals().and_then(|()| match progress.as_ref() {
+                    Some(callback) => callback.call1(py, (step.step, step.total)).map(|_| ()),
+                    None => Ok(()),
                 });
-            }
+                match outcome {
+                    Ok(()) => ControlFlow::Continue(()),
+                    Err(err) => {
+                        interrupted = Some(err);
+                        ControlFlow::Break(())
+                    }
+                }
+            })
         })
     });
 
@@ -331,7 +333,9 @@ fn correspond(
         return Err(err);
     }
 
-    let result = result.map_err(|err| to_pyerr(py, err))?;
+    let result = result
+        .map_err(|err| to_pyerr(py, err))?
+        .expect("the run only stops early when the callback records why");
     let comparisons = result.comparisons();
     let (forward, backward) = result.into_parts();
     Ok(Correspondence {

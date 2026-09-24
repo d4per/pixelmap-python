@@ -97,6 +97,9 @@ mapping = pixelmap.correspond(
 The GIL is released while the solver runs, so `correspond` can be called from a worker
 thread without blocking the rest of your program.
 
+To stop a run early, raise from the callback: the solver stops at the end of that step and
+your exception comes out of `correspond`. Ctrl-C stops it the same way, callback or not.
+
 ## API
 
 | | |

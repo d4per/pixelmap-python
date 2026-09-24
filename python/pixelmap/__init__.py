@@ -314,8 +314,9 @@ def correspond(
             Lower keeps only what both directions agree on closely, at the cost of
             coverage; higher keeps more, including some that are wrong.
         progress: Called as ``progress(step, total)`` after the initial matching pass and
-            after every schedule step. An exception raised here stops further callbacks
-            and is re-raised once the run finishes; Ctrl-C is surfaced the same way.
+            after every schedule step. An exception raised here stops the run at that
+            step and is re-raised; there is no partial mapping. Ctrl-C stops the run
+            the same way, with or without a callback, at the end of the current step.
 
     Returns:
         A :class:`Correspondence`.
