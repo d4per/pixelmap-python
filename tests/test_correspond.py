@@ -3,6 +3,7 @@
 import numpy as np
 import pixelmap
 import pytest
+from conftest import shifted_pair
 
 
 def test_recovers_a_known_translation(pair):
@@ -84,8 +85,34 @@ def test_quality_accepts_strings_and_enum_members(small_pair, quality):
     assert pixelmap.correspond(*small_pair, quality=quality).coverage > 0.5
 
 
-def test_higher_quality_works_at_a_higher_resolution(small_pair):
-    low = pixelmap.correspond(*small_pair, quality="low")
-    medium = pixelmap.correspond(*small_pair, quality="medium")
-    assert medium.working_dimensions[0] > low.working_dimensions[0]
+def test_higher_quality_works_at_a_higher_resolution():
+    pair = shifted_pair(1000, 160, 5, 2)
+    low = pixelmap.correspond(*pair, quality="low")
+    medium = pixelmap.correspond(*pair, quality="medium")
+    assert low.working_dimensions[0] == 400
+    assert medium.working_dimensions[0] == 800
     assert medium.comparisons > low.comparisons
+
+
+def test_above_low_no_step_works_wider_than_the_photos(small_pair):
+    for quality in (pixelmap.Quality.MEDIUM, pixelmap.Quality.HIGH, pixelmap.Quality.ULTRA):
+        mapping = pixelmap.correspond(*small_pair, quality=quality)
+        assert mapping.working_dimensions[0] == small_pair[0].shape[1]
+        assert mapping.coverage > 0.5
+
+
+def test_ultra_is_high_on_photos_up_to_1600_pixels_wide(small_pair):
+    high = pixelmap.correspond(*small_pair, quality="high")
+    ultra = pixelmap.correspond(*small_pair, quality=pixelmap.Quality.ULTRA)
+    assert np.array_equal(high.flow(), ultra.flow(), equal_nan=True)
+
+
+def test_fill_mode_defaults_to_the_preset_and_can_be_overridden(pair):
+    a, b = pair
+    default = pixelmap.correspond(a, b, quality="medium")
+    plain = pixelmap.correspond(a, b, quality="medium", fill_mode="plain")
+    off = pixelmap.correspond(a, b, quality="medium", fill_mode="off")
+    assert np.array_equal(default.flow(), plain.flow(), equal_nan=True)
+    assert plain.coverage >= off.coverage
+    with pytest.raises(ValueError):
+        pixelmap.correspond(a, b, fill_mode="sometimes")

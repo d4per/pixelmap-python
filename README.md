@@ -104,7 +104,7 @@ your exception comes out of `correspond`. Ctrl-C stops it the same way, callback
 
 | | |
 | --- | --- |
-| `correspond(photo1, photo2, *, quality, seed, max_round_trip_error, progress)` | Run the pipeline. |
+| `correspond(photo1, photo2, *, quality, seed, max_round_trip_error, fill_mode, progress)` | Run the pipeline. |
 | `Correspondence.flow(*, backward=False, absolute=False)` | The dense field as `(H, W, 2)` float32. |
 | `Correspondence.lookup(x, y, *, backward=False)` | One point, or NumPy arrays of them. |
 | `Correspondence.morph(t, *, detail=1)` | The first photo warped towards the second. |
@@ -112,16 +112,19 @@ your exception comes out of `correspond`. Ctrl-C stops it the same way, callback
 | `Correspondence.comparisons` | Region comparisons performed. |
 | `Correspondence.source_dimensions` / `.working_dimensions` / `.working_scale` | Geometry. |
 | `Correspondence.to_bytes()` / `.from_bytes(data, photo1, photo2)` | Save and reload a mapping. |
-| `Quality.LOW` / `.MEDIUM` / `.HIGH` | Presets, or the equivalent strings. |
+| `Quality.LOW` / `.MEDIUM` / `.HIGH` / `.ULTRA` | Presets, or the equivalent strings. |
 
 **Input.** Photos are `uint8` arrays of shape `(H, W)`, `(H, W, 1)`, `(H, W, 3)` or
 `(H, W, 4)` — Pillow images work directly. Both must have the same dimensions and be at
 least 32 pixels on each side. Violations raise `SizeMismatchError`, `PhotoTooSmallError`
 or `ValueError`, all of which are `ValueError` subclasses.
 
-**Quality.** `LOW`, `MEDIUM` and `HIGH` run 4, 10 and 13 refinement steps and finish at a
-working width of 400, 800 and 1600 pixels respectively, so cost grows faster than the step
-count suggests. `flow` and `lookup` answer in your photos' coordinates regardless; use
+**Quality.** `LOW`, `MEDIUM`, `HIGH` and `ULTRA` run 4, 10, 13 and 15 refinement steps and
+finish at a working width of 400, 800, 1600 and 3200 pixels respectively, so cost grows
+faster than the step count suggests. Above `LOW`, no step works wider than your photos, so
+`ULTRA` is the same as `HIGH` on photos up to 1600 pixels wide. Those presets also fill the
+cells the final step left unmapped from earlier, coarser steps: more pixels get an answer,
+but the filled ones are less precise than the rest. `flow` and `lookup` answer in your photos' coordinates regardless; use
 `working_scale` if you need to reason about the solver's effective resolution.
 
 **Determinism.** The same photos, quality and seed give the same mapping — run to run,

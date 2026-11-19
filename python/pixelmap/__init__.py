@@ -65,7 +65,10 @@ class Quality(str, enum.Enum):
 
     Each preset is a coarse-to-fine schedule that both runs more iterations and finishes
     at a higher working resolution, so cost grows faster than the names suggest: roughly
-    400, 800 and 1600 pixels of working width respectively.
+    400, 800, 1600 and 3200 pixels of working width respectively. Above ``LOW``, no step
+    works wider than the photos themselves, and the presets fill the cells the final step
+    left unmapped from earlier, coarser steps: more coverage, but those cells are less
+    precise than the rest.
     """
 
     LOW = "low"
@@ -75,7 +78,11 @@ class Quality(str, enum.Enum):
     """Slower, but more accurate."""
 
     HIGH = "high"
-    """Slowest, but likely the best result."""
+    """Slower still, and more accurate again."""
+
+    ULTRA = "ultra"
+    """The best result: ``HIGH``, plus two steps at up to 3200 pixels for photos wider
+    than 1600. The same as ``HIGH`` on smaller photos."""
 
     def __str__(self) -> str:
         return self.value
@@ -90,7 +97,7 @@ def _quality_name(quality: QualityArg) -> str:
     if isinstance(quality, str):
         return quality
     raise TypeError(
-        f"quality must be a pixelmap.Quality or one of 'low', 'medium', 'high', "
+        f"quality must be a pixelmap.Quality or one of 'low', 'medium', 'high', 'ultra', "
         f"got {type(quality).__name__}"
     )
 
@@ -295,6 +302,7 @@ def correspond(
     quality: QualityArg = Quality.LOW,
     seed: Optional[int] = None,
     max_round_trip_error: float = 2.0,
+    fill_mode: Optional[str] = None,
     progress: Optional[Callable[[int, int], None]] = None,
 ) -> Correspondence:
     """Maps two photos onto each other.
@@ -303,16 +311,23 @@ def correspond(
         photo1: The first photo, as a uint8 array of shape ``(H, W)``, ``(H, W, 1)``,
             ``(H, W, 3)`` or ``(H, W, 4)``. Pillow images work directly.
         photo2: The second photo. Must have the same dimensions as the first.
-        quality: :class:`Quality` preset, or the string ``"low"``, ``"medium"`` or
-            ``"high"``. Higher settings run more iterations at a higher working
-            resolution.
+        quality: :class:`Quality` preset, or the string ``"low"``, ``"medium"``,
+            ``"high"`` or ``"ultra"``. Higher settings run more iterations at a higher
+            working resolution.
         seed: Seeds the solver's queue shuffling. Two runs agreeing on inputs, quality
             and seed produce the same mapping. Defaults to the crate's own fixed seed,
             so runs are reproducible without asking.
         max_round_trip_error: How far a round trip through both mappings may land from
-            where it started, in working-resolution pixels, before a cell is discarded.
+            where it started, in grid cells (5 pixels) at the final working resolution,
+            before a cell is discarded.
             Lower keeps only what both directions agree on closely, at the cost of
             coverage; higher keeps more, including some that are wrong.
+        fill_mode: What happens to the cells the final step left unmapped. ``"off"``
+            leaves them empty, so every answer passed the round-trip check at the final
+            resolution. ``"plain"`` fills them from earlier, coarser steps: more
+            coverage, less precision in the filled cells. ``"checked"`` fills them but
+            re-runs the round trip on the filled cells. Defaults to the preset's choice:
+            off for ``LOW``, plain above it.
         progress: Called as ``progress(step, total)`` after the initial matching pass and
             after every schedule step. An exception raised here stops the run at that
             step and is re-raised; there is no partial mapping. Ctrl-C stops the run
@@ -325,7 +340,7 @@ def correspond(
         SizeMismatchError: The photos have different dimensions.
         PhotoTooSmallError: A photo is smaller than :data:`MIN_DIMENSION` on a side.
         ValueError: A photo is empty or not a uint8 array of an accepted shape, or
-            ``quality`` does not name a preset.
+            ``quality`` does not name a preset, or ``fill_mode`` a fill mode.
     """
     if max_round_trip_error <= 0:
         raise ValueError(
@@ -333,6 +348,8 @@ def correspond(
         )
     if seed is not None and not (0 <= seed < 2**64):
         raise ValueError(f"seed must fit in an unsigned 64-bit integer, got {seed}")
+    if fill_mode is not None and fill_mode not in ("off", "plain", "checked"):
+        raise ValueError(f"fill_mode must be 'off', 'plain' or 'checked', got {fill_mode!r}")
 
     return Correspondence(
         _pixelmap.correspond(
@@ -342,5 +359,6 @@ def correspond(
             seed,
             float(max_round_trip_error),
             progress,
+            fill_mode,
         )
     )

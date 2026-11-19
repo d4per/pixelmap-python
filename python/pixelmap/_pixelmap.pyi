@@ -46,4 +46,5 @@ def correspond(
     seed: int | None,
     max_round_trip_error: float,
     progress: Callable[[int, int], Any] | None,
+    fill_mode: str | None = None,
 ) -> Correspondence: ...

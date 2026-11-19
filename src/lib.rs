@@ -12,7 +12,7 @@ use std::sync::Arc;
 
 use numpy::ndarray::{Array1, Array3};
 use numpy::{IntoPyArray, PyArray1, PyArray3, PyReadonlyArray1, PyReadonlyArray3};
-use pixelmap::{DensePhotoMap, Quality, MIN_DIMENSION};
+use pixelmap::{DensePhotoMap, FillMode, Quality, MIN_DIMENSION};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
@@ -282,7 +282,8 @@ fn decode_error(py: Python<'_>, message: &str) -> PyErr {
 
 /// Maps two photos onto each other.
 #[pyfunction]
-#[pyo3(signature = (photo1, photo2, quality, seed, max_round_trip_error, progress))]
+#[pyo3(signature = (photo1, photo2, quality, seed, max_round_trip_error, progress, fill_mode = None))]
+#[allow(clippy::too_many_arguments)]
 fn correspond(
     py: Python<'_>,
     photo1: PyReadonlyArray3<'_, u8>,
@@ -291,9 +292,20 @@ fn correspond(
     seed: Option<u64>,
     max_round_trip_error: f32,
     progress: Option<Py<PyAny>>,
+    fill_mode: Option<&str>,
 ) -> PyResult<Correspondence> {
     let quality =
         Quality::from_str(quality).map_err(|err| PyValueError::new_err(err.to_string()))?;
+    let fill_mode = fill_mode
+        .map(|name| match name {
+            "off" => Ok(FillMode::Off),
+            "plain" => Ok(FillMode::Plain),
+            "checked" => Ok(FillMode::Checked),
+            other => Err(PyValueError::new_err(format!(
+                "invalid fill mode: {other}. Use 'off', 'plain' or 'checked'."
+            ))),
+        })
+        .transpose()?;
     let photo1 = Arc::new(photo_from_array(&photo1).map_err(|err| to_pyerr(py, err))?);
     let photo2 = Arc::new(photo_from_array(&photo2).map_err(|err| to_pyerr(py, err))?);
     let source_size = (photo1.width(), photo1.height());
@@ -303,6 +315,9 @@ fn correspond(
         .max_round_trip_error(max_round_trip_error);
     if let Some(seed) = seed {
         builder = builder.seed(seed);
+    }
+    if let Some(fill_mode) = fill_mode {
+        builder = builder.fill_mode(fill_mode);
     }
 
     // The exception raised by the progress callback, or by a Ctrl-C arriving while the
